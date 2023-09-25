@@ -19,6 +19,8 @@ type SectorResponse struct {
 	Reason     string    `json:"reason"`
 }
 
+var finishedLocationsChannel chan map[string]int
+
 func ProcessedSectors() {
 	//uniqueSectorIds := make(map[int]struct{})
 	var selectedMessages []SectorResponse
