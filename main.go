@@ -74,6 +74,7 @@ loop:
 					FinishedLocations["132-230"] = 10
 				}
 				fmt.Println(msg)
+
 			}
 
 			// Ваш код обработки сообщения
@@ -98,6 +99,7 @@ loop:
 func main() {
 	ProcessedSectors()
 	fmt.Println("Побежали сектора")
+
 	Locations := make(map[string]int)
 	Locations["132-221"] = 1
 	Locations["132-222"] = 2
