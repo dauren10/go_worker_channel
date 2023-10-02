@@ -131,7 +131,21 @@ func main() {
 
 	go Fill(ch)
 	ConsumeMessages(ch)
-
+	fmt.Println("Send to cond response")
+	Locations := make(map[string]int)
+	Locations["132-221"] = 1
+	Locations["132-222"] = 2
+	Locations["132-223"] = 3
+	Locations["132-224"] = 4
+	Locations["132-225"] = 5
+	Locations["132-226"] = 6
+	Locations["132-227"] = 7
+	Locations["132-228"] = 8
+	Locations["132-229"] = 9
+	Locations["132-230"] = 10
+	for _, item := range Locations {
+		fmt.Println("Location", item)
+	}
 	// Ждем нажатия клавиши Enter перед завершением программы
 	fmt.Println("Press Enter to exit")
 	fmt.Scanln()
