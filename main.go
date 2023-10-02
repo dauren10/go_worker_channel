@@ -22,7 +22,18 @@ type SectorResponse struct {
 	Reason     string
 }
 
-func Fill(ch *amqp.Channel) {
+func Fill() {
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open a channel: %v", err)
+	}
+	defer ch.Close()
 	queueName := "processed_sectors"
 
 	for i := 0; i < 10; i++ {
@@ -65,7 +76,18 @@ func Fill(ch *amqp.Channel) {
 	}
 }
 
-func ConsumeMessages(ch *amqp.Channel) {
+func ConsumeMessages() {
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open a channel: %v", err)
+	}
+	defer ch.Close()
 	queueName := "processed_sectors"
 	msgs, err := ch.Consume(
 		queueName,
@@ -117,20 +139,10 @@ loop:
 }
 
 func main() {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	if err != nil {
-		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
-	}
-	defer conn.Close()
 
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("Failed to open a channel: %v", err)
-	}
-	defer ch.Close()
+	go Fill()
+	ConsumeMessages()
 
-	go Fill(ch)
-	ConsumeMessages(ch)
 	fmt.Println("Send to cond response")
 	Locations := make(map[string]int)
 	Locations["132-221"] = 1
