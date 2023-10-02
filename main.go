@@ -38,11 +38,11 @@ func Fill() {
 
 	for i := 0; i < 10; i++ {
 		msg := i
-		fmt.Println("Sending sector", msg)
+		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
 			TaskID:     msg,
 			RoundNo:    0,
-			SectorID:   msg,
+			SectorID:   msg + 1,
 			CellID:     msg,
 			LAC:        msg,
 			Service:    "service",
@@ -72,7 +72,7 @@ func Fill() {
 			return
 		}
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -122,7 +122,7 @@ loop:
 			}
 
 			if sectorResp.ReturnCode == 0 && sectorResp.RoundNo == 0 {
-				fmt.Println("Ack in consumer func")
+				fmt.Println("Ack in consumer func", sectorResp.SectorID)
 				selectedMessages = append(selectedMessages, sectorResp)
 				fch <- sectorResp
 			} else {
@@ -150,21 +150,8 @@ loop:
 }
 
 func main() {
-	// отправка в processed_sectors обработанных секторов
-	go Fill()
-
-	// канал для получения данных из очереди
-	fch := make(chan SectorResponse)
-
-	// утилита для обработки очереди processed_sectors, после нее идет отправка  в бэк
-	go ConsumeMessages(fch)
-
-	// ожидаем получение всех данных из канала перед вызовом sendToCondResponse
-	for item := range fch {
-		fmt.Println("Получение из канала", item)
-	}
-
-	fmt.Println("Start send to condional response")
+	// var foundItems []SectorResponse
+	// var notFoundItems []SectorResponse
 	Locations := make(map[string]int)
 	Locations["132-221"] = 1
 	Locations["132-222"] = 2
@@ -178,16 +165,46 @@ func main() {
 	Locations["132-230"] = 10
 	Locations["132-231"] = 11
 	Locations["132-232"] = 12
+	// отправка в processed_sectors обработанных секторов
+	go Fill()
+
+	var receivedItems []SectorResponse
+	// канал для получения данных из очереди
+	fch := make(chan SectorResponse)
+
+	// утилита для обработки очереди processed_sectors, после нее идет отправка  в бэк
+	go ConsumeMessages(fch)
+
+	// ожидаем получение всех данных из канала перед вызовом sendToCondResponse
+	for item := range fch {
+		fmt.Println("From rabbit sectorId", item.SectorID)
+		receivedItems = append(receivedItems, item)
+	}
+
+	var differences []int
+
+	// Преобразуем SectorID в строку для проверки наличия в Locations
+
+	for _, sectorID := range Locations {
+		found := false
+		fmt.Println("Loc", sectorID)
+		for _, item := range receivedItems {
+			if item.SectorID == sectorID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			differences = append(differences, sectorID)
+		}
+	}
+
+	fmt.Println("Различия между Locations и receivedItems:", differences)
+	fmt.Println("Start send to condional response")
+
 	// после получения всех данных вызываем sendToCondResponse
-	sendToCondResponse(Locations)
-
-}
-
-func sendToCondResponse(Locations map[string]int) {
-	//send locations to back
-
-	for _, item := range Locations {
-		fmt.Println("Location", item)
+	for _, sectorID := range Locations {
+		fmt.Println("Location", sectorID)
 	}
 	// Ждем нажатия клавиши Enter перед завершением программы
 	fmt.Println("Press Enter to exit")
