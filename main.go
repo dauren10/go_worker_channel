@@ -124,7 +124,9 @@ loop:
 			if sectorResp.ReturnCode == 0 {
 				fmt.Println("Ack")
 				selectedMessages = append(selectedMessages, sectorResp)
-
+				fch <- sectorResp
+			} else {
+				fmt.Println("Non-zero ReturnCode, skipping...")
 			}
 
 			if len(selectedMessages) == countSectors {
@@ -137,22 +139,25 @@ loop:
 			break loop
 		}
 	}
+	close(fch)
 }
 
 func main() {
 	// отправка в processed_sectors обработанных секторов
 	go Fill()
 
-	//канал для получения данных из очереди
+	// канал для получения данных из очереди
 	fch := make(chan SectorResponse)
-	fmt.Println(fch)
-	//утилита для обработки очереди processed_sectors, после нее идет отправка  в бэк
-	ConsumeMessages(fch)
-	//defer close(fch)
-	// for item := range fch {
-	// 	fmt.Println("Получение из канала", item)
-	// }
 
+	// утилита для обработки очереди processed_sectors, после нее идет отправка  в бэк
+	go ConsumeMessages(fch)
+
+	// ожидаем получение всех данных из канала перед вызовом sendToCondResponse
+	for item := range fch {
+		fmt.Println("Получение из канала", item)
+	}
+
+	// после получения всех данных вызываем sendToCondResponse
 	sendToCondResponse()
 
 }
