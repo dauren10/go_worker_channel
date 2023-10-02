@@ -102,7 +102,7 @@ func ConsumeMessages(fch chan SectorResponse) {
 		log.Fatalf("Failed to register a consumer: %v", err)
 	}
 
-	timeout := time.After(30 * time.Second)
+	timeoutCount := 0
 	countSectors := 10
 	selectedMessages := make([]SectorResponse, 0)
 loop:
@@ -121,8 +121,8 @@ loop:
 				continue
 			}
 
-			if sectorResp.ReturnCode == 0 {
-				fmt.Println("Ack")
+			if sectorResp.ReturnCode == 0 && sectorResp.RoundNo == 0 {
+				fmt.Println("Ack in consumer func")
 				selectedMessages = append(selectedMessages, sectorResp)
 				fch <- sectorResp
 			} else {
@@ -134,9 +134,16 @@ loop:
 				break loop
 			}
 
-		case <-timeout:
-			fmt.Println("Timed out. Exiting the loop.")
-			break loop
+		case <-time.After(10 * time.Second):
+			if countSectors == len(selectedMessages) {
+				break loop
+			} else {
+				timeoutCount++
+				if timeoutCount == 10 {
+					break loop
+				}
+			}
+
 		}
 	}
 	close(fch)
