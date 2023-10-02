@@ -164,13 +164,6 @@ func main() {
 		fmt.Println("Получение из канала", item)
 	}
 
-	// после получения всех данных вызываем sendToCondResponse
-	sendToCondResponse()
-
-}
-
-func sendToCondResponse() {
-	//send locations to back
 	fmt.Println("Start send to condional response")
 	Locations := make(map[string]int)
 	Locations["132-221"] = 1
@@ -183,6 +176,16 @@ func sendToCondResponse() {
 	Locations["132-228"] = 8
 	Locations["132-229"] = 9
 	Locations["132-230"] = 10
+	Locations["132-231"] = 11
+	Locations["132-232"] = 12
+	// после получения всех данных вызываем sendToCondResponse
+	sendToCondResponse(Locations)
+
+}
+
+func sendToCondResponse(Locations map[string]int) {
+	//send locations to back
+
 	for _, item := range Locations {
 		fmt.Println("Location", item)
 	}
