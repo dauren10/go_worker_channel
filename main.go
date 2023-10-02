@@ -76,7 +76,7 @@ func Fill() {
 	}
 }
 
-func ConsumeMessages() {
+func ConsumeMessages(fch chan SectorResponse) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
@@ -147,7 +147,7 @@ func main() {
 	fch := make(chan SectorResponse)
 	fmt.Println(fch)
 	//утилита для обработки очереди processed_sectors, после нее идет отправка  в бэк
-	ConsumeMessages()
+	ConsumeMessages(fch)
 	//defer close(fch)
 	// for item := range fch {
 	// 	fmt.Println("Получение из канала", item)
