@@ -124,6 +124,7 @@ loop:
 			if sectorResp.ReturnCode == 0 {
 				fmt.Println("Ack")
 				selectedMessages = append(selectedMessages, sectorResp)
+
 			}
 
 			if len(selectedMessages) == countSectors {
@@ -139,11 +140,26 @@ loop:
 }
 
 func main() {
-
+	// отправка в processed_sectors обработанных секторов
 	go Fill()
-	ConsumeMessages()
 
-	fmt.Println("Send to cond response")
+	//канал для получения данных из очереди
+	fch := make(chan SectorResponse)
+	fmt.Println(fch)
+	//утилита для обработки очереди processed_sectors, после нее идет отправка  в бэк
+	ConsumeMessages()
+	//defer close(fch)
+	// for item := range fch {
+	// 	fmt.Println("Получение из канала", item)
+	// }
+
+	sendToCondResponse()
+
+}
+
+func sendToCondResponse() {
+	//send locations to back
+	fmt.Println("Start send to condional response")
 	Locations := make(map[string]int)
 	Locations["132-221"] = 1
 	Locations["132-222"] = 2
@@ -160,5 +176,5 @@ func main() {
 	}
 	// Ждем нажатия клавиши Enter перед завершением программы
 	fmt.Println("Press Enter to exit")
-	fmt.Scanln()
+
 }
