@@ -183,13 +183,10 @@ func main() {
 
 	var differences []int
 
-	// Преобразуем SectorID в строку для проверки наличия в Locations
-
 	for _, sectorID := range Locations {
 		found := false
-		fmt.Println("Loc", sectorID)
 		for _, item := range receivedItems {
-			if item.SectorID == sectorID {
+			if sectorID == item.SectorID {
 				found = true
 				break
 			}
@@ -198,14 +195,19 @@ func main() {
 			differences = append(differences, sectorID)
 		}
 	}
-
 	fmt.Println("Различия между Locations и receivedItems:", differences)
+	fmt.Println("Отправка пустых секторов")
 	fmt.Println("Start send to condional response")
+	for _, sectorIDL := range Locations {
+		for _, sectorIdD := range differences {
+			if sectorIDL == sectorIdD {
+				fmt.Println("Сектор: ", sectorIDL)
+			}
+		}
+	}
 
 	// после получения всех данных вызываем sendToCondResponse
-	for _, sectorID := range Locations {
-		fmt.Println("Location", sectorID)
-	}
+
 	// Ждем нажатия клавиши Enter перед завершением программы
 	fmt.Println("Press Enter to exit")
 
