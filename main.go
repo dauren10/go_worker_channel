@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -8,7 +9,21 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func worker(id int) {
+type SectorResponse struct {
+	TaskID     int
+	RoundNo    int
+	SectorID   int
+	CellID     int
+	LAC        int
+	Service    string
+	Timestamp  time.Time
+	ReturnCode int
+	Result     string
+	Reason     string
+}
+
+func worker(id int, fch chan SectorResponse) {
+
 	// Подключение к RabbitMQ серверу
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
@@ -53,16 +68,33 @@ func worker(id int) {
 
 	// Чтение сообщений из очереди
 	for msg := range msgs {
+		var sectorResp SectorResponse
+		err := json.Unmarshal(msg.Body, &sectorResp)
+		if err != nil {
+			log.Println("Failed to unmarshal JSON:", err)
+			continue
+		}
 		msg.Ack(false)
 		fmt.Printf("Worker %d received message: %s\n", id, msg.Body)
+		fch <- sectorResp
 		time.Sleep(time.Second * 1)
 	}
+
+	close(fch)
 }
 
 func main() {
+	var receivedItems []SectorResponse
+	// канал для получения данных из очереди
+	fch := make(chan SectorResponse)
 	// Запуск нескольких воркеров
 	for i := 1; i <= 3; i++ {
-		go worker(i)
+		go worker(i, fch)
+	}
+
+	for item := range fch {
+		fmt.Println("From rabbit sectorId", item)
+		receivedItems = append(receivedItems, item)
 	}
 
 	// Ждем, чтобы воркеры имели время обработать сообщения
