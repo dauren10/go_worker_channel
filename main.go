@@ -42,6 +42,13 @@ func worker(id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup) {
 	fmt.Printf("Worker %d finished\n", id)
 }
 
+func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.Delivery) {
+	for msg := range messages {
+		workerChannel <- msg
+	}
+	close(workerChannel)
+}
+
 func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
@@ -86,36 +93,27 @@ func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, err
 	return conn, ch, messages, nil
 }
 
-func processMessages(numWorkers, bufferSize int) {
+func main() {
+	numWorkers := 3
+	bufferSize := 10
+
 	conn, ch, messages, err := setupRabbitMQ()
 	if err != nil {
 		log.Fatalf("Error setting up RabbitMQ: %v", err)
 	}
 	defer ch.Close()
 	defer conn.Close()
-	var wg sync.WaitGroup
 
+	var wg sync.WaitGroup
 	workerChannel := make(chan amqp.Delivery, bufferSize)
+
+	go consumeMessages(messages, workerChannel)
 
 	for i := 1; i <= numWorkers; i++ {
 		wg.Add(1)
 		go worker(i, workerChannel, &wg)
 	}
 
-	go func() {
-		for msg := range messages {
-			workerChannel <- msg
-		}
-		close(workerChannel)
-	}()
-
 	wg.Wait()
 	fmt.Println("All workers are done.")
-}
-
-func main() {
-	numWorkers := 3
-	bufferSize := 10
-
-	processMessages(numWorkers, bufferSize)
 }
