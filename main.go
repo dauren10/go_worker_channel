@@ -86,7 +86,13 @@ func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, err
 	return conn, ch, messages, nil
 }
 
-func processMessages(messages <-chan amqp.Delivery, numWorkers, bufferSize int) {
+func processMessages(numWorkers, bufferSize int) {
+	conn, ch, messages, err := setupRabbitMQ()
+	if err != nil {
+		log.Fatalf("Error setting up RabbitMQ: %v", err)
+	}
+	defer ch.Close()
+	defer conn.Close()
 	var wg sync.WaitGroup
 
 	workerChannel := make(chan amqp.Delivery, bufferSize)
@@ -111,12 +117,5 @@ func main() {
 	numWorkers := 3
 	bufferSize := 10
 
-	conn, ch, messages, err := setupRabbitMQ()
-	if err != nil {
-		log.Fatalf("Error setting up RabbitMQ: %v", err)
-	}
-	defer ch.Close()
-	defer conn.Close()
-
-	processMessages(messages, numWorkers, bufferSize)
+	processMessages(numWorkers, bufferSize)
 }
