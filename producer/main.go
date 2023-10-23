@@ -37,7 +37,7 @@ func Fill(wg *sync.WaitGroup) {
 	defer ch.Close()
 	queueName := "processed_sectors"
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 10; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -76,7 +76,7 @@ func Fill(wg *sync.WaitGroup) {
 		time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 10; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -115,7 +115,7 @@ func Fill(wg *sync.WaitGroup) {
 		time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 10; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
