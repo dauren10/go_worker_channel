@@ -23,18 +23,36 @@ type SectorResponse struct {
 	Reason     string `json:"reason"`
 }
 
-func worker(task_id int, fch chan SectorResponse, done chan struct{}) {
+func worker(id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Printf("Worker %d started\n", id)
+	for msg := range ch {
+		var sectorResp SectorResponse
+		err := json.Unmarshal(msg.Body, &sectorResp)
+		if err != nil {
+			log.Println("Failed to unmarshal JSON:", err)
+			msg.Ack(false)
+			continue
+		}
+		fmt.Printf("Worker %d received message: %s\n", id, msg.Body)
+		// Process the message here
+		time.Sleep(time.Second * 1) // Simulating work with sleep
+		msg.Ack(false)
+	}
+	fmt.Printf("Worker %d finished\n", id)
+}
+
+func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
-		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+		return nil, nil, nil, fmt.Errorf("Failed to connect to RabbitMQ: %v", err)
 	}
-	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("Failed to open a channel: %v", err)
+		conn.Close()
+		return nil, nil, nil, fmt.Errorf("Failed to open a channel: %v", err)
 	}
-	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
 		"processed_sectors",
@@ -45,10 +63,12 @@ func worker(task_id int, fch chan SectorResponse, done chan struct{}) {
 		nil,
 	)
 	if err != nil {
-		log.Fatalf("Failed to declare a queue: %v", err)
+		ch.Close()
+		conn.Close()
+		return nil, nil, nil, fmt.Errorf("Failed to declare a queue: %v", err)
 	}
 
-	msgs, err := ch.Consume(
+	messages, err := ch.Consume(
 		q.Name,
 		"",
 		false,
@@ -58,64 +78,45 @@ func worker(task_id int, fch chan SectorResponse, done chan struct{}) {
 		nil,
 	)
 	if err != nil {
-		log.Fatalf("Failed to register a consumer: %v", err)
+		ch.Close()
+		conn.Close()
+		return nil, nil, nil, fmt.Errorf("Failed to register a consumer: %v", err)
 	}
 
-	fmt.Printf("Worker %d started\n", task_id)
-
-	for msg := range msgs {
-		var sectorResp SectorResponse
-		err := json.Unmarshal(msg.Body, &sectorResp)
-		if err != nil {
-			log.Println("Failed to unmarshal JSON:", err)
-			msg.Ack(false)
-			continue
-		}
-		fmt.Println(task_id, sectorResp.TaskID)
-		fmt.Println(sectorResp)
-		if sectorResp.TaskID > 0 {
-			msg.Ack(false)
-			fmt.Printf("Worker %d received message: %s\n", task_id, msg.Body)
-			fch <- sectorResp
-			time.Sleep(time.Second * 1)
-		}
-	}
-
-	done <- struct{}{}
+	return conn, ch, messages, nil
 }
 
-func main() {
-	bufferSize := 10
-	var receivedItems []SectorResponse
-	fch := make(chan SectorResponse, bufferSize)
-	done := make(chan struct{})
+func processMessages(messages <-chan amqp.Delivery, numWorkers, bufferSize int) {
 	var wg sync.WaitGroup
 
-	for i := 1; i <= 3; i++ {
+	workerChannel := make(chan amqp.Delivery, bufferSize)
+
+	for i := 1; i <= numWorkers; i++ {
 		wg.Add(1)
-		go worker(i, fch, done)
+		go worker(i, workerChannel, &wg)
 	}
 
 	go func() {
-		wg.Wait()
-		close(fch)
-		close(done)
+		for msg := range messages {
+			workerChannel <- msg
+		}
+		close(workerChannel)
 	}()
 
-	for {
-		select {
-		case item, ok := <-fch:
-			if !ok {
-				fch = nil // закрыть канал fch
-				break
-			}
-			fmt.Println("From rabbit sectorId", item)
-			receivedItems = append(receivedItems, item)
-		case <-done:
-			wg.Done()
-		}
+	wg.Wait()
+	fmt.Println("All workers are done.")
+}
 
+func main() {
+	numWorkers := 3
+	bufferSize := 10
+
+	conn, ch, messages, err := setupRabbitMQ()
+	if err != nil {
+		log.Fatalf("Error setting up RabbitMQ: %v", err)
 	}
+	defer ch.Close()
+	defer conn.Close()
 
-	<-make(chan struct{})
+	processMessages(messages, numWorkers, bufferSize)
 }

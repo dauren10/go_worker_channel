@@ -37,7 +37,7 @@ func Fill(wg *sync.WaitGroup) {
 	defer ch.Close()
 	queueName := "processed_sectors"
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -76,7 +76,7 @@ func Fill(wg *sync.WaitGroup) {
 		time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -115,7 +115,124 @@ func Fill(wg *sync.WaitGroup) {
 		time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
+		msg := i
+		fmt.Println("Sending sector", msg+1)
+		response := SectorResponse{
+			TaskID:     3,
+			RoundNo:    0,
+			SectorID:   msg + 1,
+			CellID:     msg,
+			LAC:        msg,
+			Service:    "service",
+			Timestamp:  time.Now(),
+			ReturnCode: 0,
+			Result:     "result",
+			Reason:     "reason",
+		}
+
+		jsonBody, err := json.Marshal(response)
+		if err != nil {
+			fmt.Println("Failed to marshal JSON:", err)
+			return
+		}
+
+		err = ch.Publish(
+			"",
+			queueName,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        jsonBody,
+			})
+		if err != nil {
+			fmt.Println("Failed to publish a message:", err)
+			return
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	for i := 0; i < 5; i++ {
+		msg := i
+		fmt.Println("Sending sector", msg+1)
+		response := SectorResponse{
+			TaskID:     1,
+			RoundNo:    0,
+			SectorID:   msg + 1,
+			CellID:     msg,
+			LAC:        msg,
+			Service:    "service",
+			Timestamp:  time.Now(),
+			ReturnCode: 0,
+			Result:     "result",
+			Reason:     "reason",
+		}
+
+		jsonBody, err := json.Marshal(response)
+		if err != nil {
+			fmt.Println("Failed to marshal JSON:", err)
+			return
+		}
+
+		err = ch.Publish(
+			"",
+			queueName,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        jsonBody,
+			})
+		if err != nil {
+			fmt.Println("Failed to publish a message:", err)
+			return
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	for i := 0; i < 5; i++ {
+		msg := i
+		fmt.Println("Sending sector", msg+1)
+		response := SectorResponse{
+			TaskID:     2,
+			RoundNo:    0,
+			SectorID:   msg + 1,
+			CellID:     msg,
+			LAC:        msg,
+			Service:    "service",
+			Timestamp:  time.Now(),
+			ReturnCode: 0,
+			Result:     "result",
+			Reason:     "reason",
+		}
+
+		jsonBody, err := json.Marshal(response)
+		if err != nil {
+			fmt.Println("Failed to marshal JSON:", err)
+			return
+		}
+
+		err = ch.Publish(
+			"",
+			queueName,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        jsonBody,
+			})
+		if err != nil {
+			fmt.Println("Failed to publish a message:", err)
+			return
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	for i := 0; i < 5; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
