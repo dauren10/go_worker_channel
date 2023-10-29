@@ -23,23 +23,39 @@ type SectorResponse struct {
 	Reason     string `json:"reason"`
 }
 
-func worker(id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup) {
+func worker(task_id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup, taskData map[int][]SectorResponse) {
 	defer wg.Done()
-	fmt.Printf("Worker %d started\n", id)
-	for msg := range ch {
-		var sectorResp SectorResponse
-		err := json.Unmarshal(msg.Body, &sectorResp)
-		if err != nil {
-			log.Println("Failed to unmarshal JSON:", err)
+	fmt.Printf("Worker %d started\n", task_id)
+	lenSectorTaskId := 0
+	for {
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				fmt.Printf("Worker %d: Channel closed, exiting\n", task_id)
+
+			}
+
+			var sectorResp SectorResponse
+			err := json.Unmarshal(msg.Body, &sectorResp)
+			if err != nil {
+				log.Println("Failed to unmarshal JSON:", err)
+				msg.Ack(false) // Подтверждаем сообщение в случае ошибки при разборе JSON
+				continue
+			}
+
 			msg.Ack(false)
-			continue
+			taskData[sectorResp.TaskID] = append(taskData[sectorResp.TaskID], sectorResp)
+			lenSectorTaskId = len(taskData[sectorResp.TaskID])
+			if lenSectorTaskId == 10 {
+				fmt.Println(lenSectorTaskId, sectorResp.TaskID)
+				fmt.Println("Stop worker break")
+				break
+			}
+			time.Sleep(time.Second * 1)
+
 		}
-		fmt.Printf("Worker %d received message: %s\n", id, msg.Body)
-		// Process the message here
-		time.Sleep(time.Second * 1) // Simulating work with sleep
-		msg.Ack(false)
 	}
-	fmt.Printf("Worker %d finished\n", id)
+
 }
 
 func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.Delivery) {
@@ -95,7 +111,6 @@ func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, err
 
 func main() {
 	numWorkers := 3
-	bufferSize := 10
 
 	conn, ch, messages, err := setupRabbitMQ()
 	if err != nil {
@@ -103,15 +118,19 @@ func main() {
 	}
 	defer ch.Close()
 	defer conn.Close()
+	err = ch.Qos(1, 0, false)
+	if err != nil {
+		log.Fatalf("Error setting QoS: %v", err)
+	}
 
 	var wg sync.WaitGroup
-	workerChannel := make(chan amqp.Delivery, bufferSize)
+	workerChannel := make(chan amqp.Delivery)
 
 	go consumeMessages(messages, workerChannel)
-
+	taskData := make(map[int][]SectorResponse)
 	for i := 1; i <= numWorkers; i++ {
 		wg.Add(1)
-		go worker(i, workerChannel, &wg)
+		go worker(i, workerChannel, &wg, taskData)
 	}
 
 	wg.Wait()
