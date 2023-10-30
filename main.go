@@ -23,48 +23,6 @@ type SectorResponse struct {
 	Reason     string `json:"reason"`
 }
 
-func worker(task_id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup, taskData map[int][]SectorResponse) {
-	defer wg.Done()
-	fmt.Printf("Worker %d started\n", task_id)
-	lenSectorTaskId := 0
-	for {
-		select {
-		case msg, ok := <-ch:
-			if !ok {
-				fmt.Printf("Worker %d: Channel closed, exiting\n", task_id)
-
-			}
-
-			var sectorResp SectorResponse
-			err := json.Unmarshal(msg.Body, &sectorResp)
-			if err != nil {
-				log.Println("Failed to unmarshal JSON:", err)
-				msg.Ack(false) // Подтверждаем сообщение в случае ошибки при разборе JSON
-				continue
-			}
-
-			msg.Ack(false)
-			taskData[sectorResp.TaskID] = append(taskData[sectorResp.TaskID], sectorResp)
-			lenSectorTaskId = len(taskData[sectorResp.TaskID])
-			if lenSectorTaskId == 10 {
-				fmt.Println(lenSectorTaskId, sectorResp.TaskID)
-				fmt.Println("Stop worker break")
-				break
-			}
-			time.Sleep(time.Second * 1)
-
-		}
-	}
-
-}
-
-func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.Delivery) {
-	for msg := range messages {
-		workerChannel <- msg
-	}
-	close(workerChannel)
-}
-
 func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
@@ -109,6 +67,52 @@ func setupRabbitMQ() (*amqp.Connection, *amqp.Channel, <-chan amqp.Delivery, err
 	return conn, ch, messages, nil
 }
 
+func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.Delivery) {
+	for msg := range messages {
+		workerChannel <- msg
+	}
+	close(workerChannel)
+}
+
+func worker(task_id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Printf("Worker %d started\n", task_id)
+	taskData := make(map[int][]SectorResponse)
+	processed_sectors(task_id, ch, taskData)
+}
+
+func processed_sectors(task_id int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse) {
+	lenSectorTaskId := 0
+	for {
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				fmt.Printf("Worker %d: Channel closed, exiting\n", task_id)
+				return
+			}
+
+			var sectorResp SectorResponse
+			err := json.Unmarshal(msg.Body, &sectorResp)
+			if err != nil {
+				log.Println("Failed to unmarshal JSON:", err)
+				msg.Ack(false) // Подтверждаем сообщение в случае ошибки при разборе JSON
+				continue
+			}
+
+			msg.Ack(false)
+			fmt.Println(sectorResp)
+			taskData[sectorResp.TaskID] = append(taskData[sectorResp.TaskID], sectorResp)
+			lenSectorTaskId = len(taskData[sectorResp.TaskID])
+			if lenSectorTaskId == 10 {
+				fmt.Println(lenSectorTaskId, sectorResp.TaskID)
+				fmt.Println("Stop worker break")
+				break
+			}
+			time.Sleep(time.Second * 1)
+		}
+	}
+}
+
 func main() {
 	numWorkers := 3
 
@@ -127,12 +131,29 @@ func main() {
 	workerChannel := make(chan amqp.Delivery)
 
 	go consumeMessages(messages, workerChannel)
-	taskData := make(map[int][]SectorResponse)
+
 	for i := 1; i <= numWorkers; i++ {
 		wg.Add(1)
-		go worker(i, workerChannel, &wg, taskData)
+		go worker(i, workerChannel, &wg)
 	}
 
 	wg.Wait()
+
 	fmt.Println("All workers are done.")
+}
+
+func sendLocations() {
+	Locations := make(map[string]int)
+	Locations["132-221"] = 1
+	Locations["132-222"] = 2
+	Locations["132-223"] = 3
+	Locations["132-224"] = 4
+	Locations["132-225"] = 5
+	Locations["132-226"] = 6
+	Locations["132-227"] = 7
+	Locations["132-228"] = 8
+	Locations["132-229"] = 9
+	Locations["132-230"] = 10
+	Locations["132-231"] = 11
+	Locations["132-232"] = 12
 }
