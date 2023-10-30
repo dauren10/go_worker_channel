@@ -71,23 +71,16 @@ func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.De
 	for msg := range messages {
 		workerChannel <- msg
 	}
-	close(workerChannel)
+
 }
+func processedSectors(taskID int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse, resultChannel chan<- map[int][]SectorResponse) {
 
-func worker(task_id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup, taskData map[int][]SectorResponse) {
-	defer wg.Done()
-	fmt.Printf("Worker %d started\n", task_id)
-
-	processed_sectors(task_id, ch, taskData)
-}
-
-func processed_sectors(task_id int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse) {
-	lenSectorTaskId := 0
+loop:
 	for {
 		select {
 		case msg, ok := <-ch:
 			if !ok {
-				fmt.Printf("Worker %d: Channel closed, exiting\n", task_id)
+				fmt.Println("Channel closed, exiting processedSectors")
 				return
 			}
 
@@ -95,65 +88,68 @@ func processed_sectors(task_id int, ch <-chan amqp.Delivery, taskData map[int][]
 			err := json.Unmarshal(msg.Body, &sectorResp)
 			if err != nil {
 				log.Println("Failed to unmarshal JSON:", err)
-				msg.Ack(false) // Подтверждаем сообщение в случае ошибки при разборе JSON
+				msg.Ack(false)
 				continue
 			}
 
 			msg.Ack(false)
-			fmt.Println(sectorResp)
 			taskData[sectorResp.TaskID] = append(taskData[sectorResp.TaskID], sectorResp)
-			lenSectorTaskId = len(taskData[sectorResp.TaskID])
-			if lenSectorTaskId == 10 {
-				fmt.Println(lenSectorTaskId, sectorResp.TaskID)
-				fmt.Println("Stop worker break")
-				break
+			resultChannel <- taskData
+			lenSectorTaskID := len(taskData[sectorResp.TaskID])
+			if lenSectorTaskID == 10 {
+				fmt.Println(lenSectorTaskID, sectorResp.TaskID)
+				fmt.Println("Stop processedSectors break")
+				break loop
 			}
 			time.Sleep(time.Second * 1)
 		}
 	}
 }
 
+func worker(taskID int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse, resultChannel chan<- map[int][]SectorResponse, wg *sync.WaitGroup) {
+	defer wg.Done() // Decrement the counter when the goroutine completes
+	fmt.Printf("Worker %d started\n", taskID)
+	processedSectors(taskID, ch, taskData, resultChannel)
+	fmt.Println("Start send to condresponse")
+}
+
 func main() {
 	numWorkers := 3
-
 	conn, ch, messages, err := setupRabbitMQ()
 	if err != nil {
 		log.Fatalf("Error setting up RabbitMQ: %v", err)
 	}
+
 	defer ch.Close()
 	defer conn.Close()
-	err = ch.Qos(1, 0, false)
-	if err != nil {
-		log.Fatalf("Error setting QoS: %v", err)
-	}
 
 	var wg sync.WaitGroup
 	workerChannel := make(chan amqp.Delivery)
+	resultChannel := make(chan map[int][]SectorResponse)
 
 	go consumeMessages(messages, workerChannel)
 	taskData := make(map[int][]SectorResponse)
+
 	for i := 1; i <= numWorkers; i++ {
-		wg.Add(1)
-		go worker(i, workerChannel, &wg, taskData)
+		wg.Add(1) // Increment the counter before starting a goroutine
+		go worker(i, workerChannel, taskData, resultChannel, &wg)
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait() // Wait for all workers to complete
+		close(resultChannel)
+	}()
 
+	// Collect results from workers
+	finalResult := make(map[int][]SectorResponse)
+	for updatedData := range resultChannel {
+
+		for taskID, sectors := range updatedData {
+			fmt.Println(taskID)
+			finalResult[taskID] = append(finalResult[taskID], sectors...)
+		}
+	}
 	fmt.Println("All workers are done.")
-}
 
-func sendLocations() {
-	Locations := make(map[string]int)
-	Locations["132-221"] = 1
-	Locations["132-222"] = 2
-	Locations["132-223"] = 3
-	Locations["132-224"] = 4
-	Locations["132-225"] = 5
-	Locations["132-226"] = 6
-	Locations["132-227"] = 7
-	Locations["132-228"] = 8
-	Locations["132-229"] = 9
-	Locations["132-230"] = 10
-	Locations["132-231"] = 11
-	Locations["132-232"] = 12
+	// Use finalResult as needed
 }
