@@ -74,10 +74,10 @@ func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.De
 	close(workerChannel)
 }
 
-func worker(task_id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup) {
+func worker(task_id int, ch <-chan amqp.Delivery, wg *sync.WaitGroup, taskData map[int][]SectorResponse) {
 	defer wg.Done()
 	fmt.Printf("Worker %d started\n", task_id)
-	taskData := make(map[int][]SectorResponse)
+
 	processed_sectors(task_id, ch, taskData)
 }
 
@@ -131,10 +131,10 @@ func main() {
 	workerChannel := make(chan amqp.Delivery)
 
 	go consumeMessages(messages, workerChannel)
-
+	taskData := make(map[int][]SectorResponse)
 	for i := 1; i <= numWorkers; i++ {
 		wg.Add(1)
-		go worker(i, workerChannel, &wg)
+		go worker(i, workerChannel, &wg, taskData)
 	}
 
 	wg.Wait()

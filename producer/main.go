@@ -73,7 +73,7 @@ func Fill(wg *sync.WaitGroup) {
 			return
 		}
 
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 	}
 
 	for i := 0; i < 5; i++ {
@@ -112,7 +112,7 @@ func Fill(wg *sync.WaitGroup) {
 			return
 		}
 
-		time.Sleep(1 * time.Second)
+		//	time.Sleep(1 * time.Second)
 	}
 
 	for i := 0; i < 5; i++ {
@@ -151,7 +151,7 @@ func Fill(wg *sync.WaitGroup) {
 			return
 		}
 
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 	}
 
 	for i := 0; i < 5; i++ {
@@ -190,7 +190,7 @@ func Fill(wg *sync.WaitGroup) {
 			return
 		}
 
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 	}
 
 	for i := 0; i < 5; i++ {
@@ -229,7 +229,7 @@ func Fill(wg *sync.WaitGroup) {
 			return
 		}
 
-		time.Sleep(1 * time.Second)
+		//	time.Sleep(1 * time.Second)
 	}
 
 	for i := 0; i < 5; i++ {
@@ -268,7 +268,7 @@ func Fill(wg *sync.WaitGroup) {
 			return
 		}
 
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 	}
 }
 
