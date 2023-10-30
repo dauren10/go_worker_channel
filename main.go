@@ -73,7 +73,7 @@ func consumeMessages(messages <-chan amqp.Delivery, workerChannel chan<- amqp.De
 	}
 
 }
-func processedSectors(taskID int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse, resultChannel chan<- map[int][]SectorResponse) {
+func processedSectors(taskID int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse, resultChannel chan<- SectorResponse) {
 
 loop:
 	for {
@@ -94,19 +94,21 @@ loop:
 
 			msg.Ack(false)
 			taskData[sectorResp.TaskID] = append(taskData[sectorResp.TaskID], sectorResp)
-			resultChannel <- taskData
+
 			lenSectorTaskID := len(taskData[sectorResp.TaskID])
+			resultChannel <- sectorResp
 			if lenSectorTaskID == 10 {
-				fmt.Println(lenSectorTaskID, sectorResp.TaskID)
-				fmt.Println("Stop processedSectors break")
+
+				fmt.Println("Stop processedSectors break", sectorResp.TaskID)
 				break loop
 			}
+
 			time.Sleep(time.Second * 1)
 		}
 	}
 }
 
-func worker(taskID int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse, resultChannel chan<- map[int][]SectorResponse, wg *sync.WaitGroup) {
+func worker(taskID int, ch <-chan amqp.Delivery, taskData map[int][]SectorResponse, resultChannel chan<- SectorResponse, wg *sync.WaitGroup) {
 	defer wg.Done() // Decrement the counter when the goroutine completes
 	fmt.Printf("Worker %d started\n", taskID)
 	processedSectors(taskID, ch, taskData, resultChannel)
@@ -125,7 +127,7 @@ func main() {
 
 	var wg sync.WaitGroup
 	workerChannel := make(chan amqp.Delivery)
-	resultChannel := make(chan map[int][]SectorResponse)
+	resultChannel := make(chan SectorResponse)
 
 	go consumeMessages(messages, workerChannel)
 	taskData := make(map[int][]SectorResponse)
@@ -141,14 +143,49 @@ func main() {
 	}()
 
 	// Collect results from workers
-	finalResult := make(map[int][]SectorResponse)
-	for updatedData := range resultChannel {
+	//finalResult := make(map[int][]SectorResponse)
+	Locations := make(map[string]int)
+	Locations["31"] = 31
+	Locations["32"] = 32
+	Locations["33"] = 33
+	Locations["34"] = 34
+	Locations["35"] = 35
 
-		for taskID, sectors := range updatedData {
-			fmt.Println(taskID)
-			finalResult[taskID] = append(finalResult[taskID], sectors...)
+	Locations["36"] = 36
+	Locations["37"] = 37
+	Locations["38"] = 38
+	Locations["39"] = 39
+	Locations["40"] = 40
+
+	Locations["41"] = 41
+	Locations["42"] = 42
+	Locations["43"] = 43
+	Locations["44"] = 44
+	Locations["45"] = 45
+	var receivedItems []SectorResponse
+	for updatedData := range resultChannel {
+		if updatedData.TaskID == 1 {
+			receivedItems = append(receivedItems, updatedData)
+			fmt.Println(updatedData)
+		}
+
+	}
+
+	for _, sectorID := range Locations {
+		found := false
+		for _, item := range receivedItems {
+			if sectorID == item.SectorID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Println(sectorID)
 		}
 	}
+
+	fmt.Println("Final.......")
+
 	fmt.Println("All workers are done.")
 
 	// Use finalResult as needed

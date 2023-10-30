@@ -76,7 +76,7 @@ func Fill(wg *sync.WaitGroup) {
 		//time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := 5; i < 10; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -115,7 +115,7 @@ func Fill(wg *sync.WaitGroup) {
 		//	time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := 10; i < 15; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -154,7 +154,7 @@ func Fill(wg *sync.WaitGroup) {
 		//time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := 15; i < 20; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -193,7 +193,7 @@ func Fill(wg *sync.WaitGroup) {
 		//time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := 20; i < 25; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
@@ -232,7 +232,7 @@ func Fill(wg *sync.WaitGroup) {
 		//	time.Sleep(1 * time.Second)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := 25; i < 30; i++ {
 		msg := i
 		fmt.Println("Sending sector", msg+1)
 		response := SectorResponse{
